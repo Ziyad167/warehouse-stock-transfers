@@ -1,0 +1,97 @@
+const inventoryService = require('../services/inventoryService');
+const warehouseService = require('../services/warehouseService');
+const itemService = require('../services/itemService');
+
+// Sends an error in the same shape everywhere: { error: { code, message } }
+function sendError(res, status, code, message) {
+  return res.status(status).json({ error: { code, message } });
+}
+
+// Validates a new inventory record; returns an error message or null
+function validateNewRecord(warehouseId, itemId, quantity) {
+  if (typeof warehouseId !== 'string' || warehouseId.trim() === '') {
+    return 'warehouseId is required.';
+  }
+  if (typeof itemId !== 'string' || itemId.trim() === '') {
+    return 'itemId is required.';
+  }
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    return 'Quantity must be a whole number of 0 or more.';
+  }
+  return null;
+}
+
+// POST /api/inventory -> 201 with the new record, or 400 / 404 / 409 / 415
+async function createInventoryRecord(req, res, next) {
+  try {
+    if (!req.is('application/json')) {
+      return sendError(res, 415, 'UNSUPPORTED_MEDIA_TYPE',
+        'Content-Type must be application/json.');
+    }
+
+    const { warehouseId, itemId, quantity } = req.body;
+
+    const problem = validateNewRecord(warehouseId, itemId, quantity);
+    if (problem) {
+      return sendError(res, 400, 'VALIDATION_ERROR', problem);
+    }
+
+    // The warehouse and the item must both exist
+    const warehouse = await warehouseService.findWarehouseById(warehouseId);
+    if (!warehouse) {
+      return sendError(res, 404, 'WAREHOUSE_NOT_FOUND', 'Warehouse not found.');
+    }
+    const item = await itemService.findItemById(itemId);
+    if (!item) {
+      return sendError(res, 404, 'ITEM_NOT_FOUND', 'Item not found.');
+    }
+
+    // Business rule: one record per item per warehouse
+    const existing = await inventoryService.findRecord(warehouseId, itemId);
+    if (existing) {
+      return sendError(res, 409, 'DUPLICATE_RECORD',
+        'This item already has a stock record in this warehouse.');
+    }
+
+    const record = await inventoryService.createRecord({ warehouseId, itemId, quantity });
+    res.status(201).json(record);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// GET /api/warehouses/:id/inventory -> 200 with the stock of one warehouse, or 404
+async function listWarehouseInventory(req, res, next) {
+  try {
+    const warehouseId = req.params.id;
+    const warehouse = await warehouseService.findWarehouseById(warehouseId);
+    if (!warehouse) {
+      return sendError(res, 404, 'WAREHOUSE_NOT_FOUND', 'Warehouse not found.');
+    }
+
+    const records = await inventoryService.listByWarehouse(warehouseId);
+    const items = await itemService.readItems();
+
+    // Add the item's name and SKU to each record so the answer is easy to read
+    const stock = records.map((record) => {
+      const item = items.find((one) => one.itemId === record.itemId);
+      return {
+        inventoryId: record.inventoryId,
+        itemId: record.itemId,
+        itemName: item ? item.name : 'Unknown item',
+        sku: item ? item.sku : '',
+        quantity: record.quantity,
+        updatedAt: record.updatedAt
+      };
+    });
+
+    res.status(200).json({ warehouse, stock });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  createInventoryRecord,
+  listWarehouseInventory
+};

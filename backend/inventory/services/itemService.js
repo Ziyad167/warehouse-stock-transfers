@@ -43,4 +43,11 @@ async function createItem({ name, sku, category, description }) {
   await writeItems(items);
   return item;
 }
-module.exports = { readItems, findItemBySku, searchItems, createItem };
+
+// Finds one item by its id; returns the item or undefined
+async function findItemById(itemId) {
+  const items = await readItems();
+  return items.find((item) => item.itemId === itemId);
+}
+
+module.exports = { readItems, findItemBySku, searchItems, createItem, findItemById };

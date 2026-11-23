@@ -28,4 +28,10 @@ async function createWarehouse({ name, location }) {
   return warehouse;
 }
 
-module.exports = { readWarehouses, createWarehouse };
+// Finds one warehouse by its id; returns the warehouse or undefined
+async function findWarehouseById(warehouseId) {
+  const warehouses = await readWarehouses();
+  return warehouses.find((warehouse) => warehouse.warehouseId === warehouseId);
+}
+
+module.exports = { readWarehouses, createWarehouse, findWarehouseById };
