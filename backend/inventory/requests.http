@@ -75,3 +75,50 @@ Content-Type: application/json
   "sku": "A B",
   "category": "Packaging"
 }
+### ---------- INVENTORY ----------
+
+### T20 Stock of Cairo warehouse (expect 200)
+GET {{baseUrl}}/api/warehouses/WH-101/inventory
+
+### T21 Unknown warehouse (expect 404 WAREHOUSE_NOT_FOUND)
+GET {{baseUrl}}/api/warehouses/WH-999/inventory
+
+### T22 Add tape to Cairo warehouse (expect 201)
+POST {{baseUrl}}/api/inventory
+Content-Type: application/json
+
+{
+  "warehouseId": "WH-101",
+  "itemId": "ITM-1795393933622",
+  "quantity": 40
+}
+
+### T23 Same item again in same warehouse (expect 409 DUPLICATE_RECORD)
+POST {{baseUrl}}/api/inventory
+Content-Type: application/json
+
+{
+  "warehouseId": "WH-101",
+  "itemId": "ITM-101",
+  "quantity": 5
+}
+
+### T24 Negative quantity (expect 400 VALIDATION_ERROR)
+POST {{baseUrl}}/api/inventory
+Content-Type: application/json
+
+{
+  "warehouseId": "WH-101",
+  "itemId": "ITM-102",
+  "quantity": -3
+}
+
+### T25 Unknown item (expect 404 ITEM_NOT_FOUND)
+POST {{baseUrl}}/api/inventory
+Content-Type: application/json
+
+{
+  "warehouseId": "WH-101",
+  "itemId": "ITM-999",
+  "quantity": 5
+}

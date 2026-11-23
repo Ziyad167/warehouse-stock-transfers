@@ -1,0 +1,23 @@
+[
+  {
+    "inventoryId": "INV-101",
+    "warehouseId": "WH-101",
+    "itemId": "ITM-101",
+    "quantity": 50,
+    "updatedAt": "2026-09-01T10:00:00.000Z"
+  },
+  {
+    "inventoryId": "INV-102",
+    "warehouseId": "WH-101",
+    "itemId": "ITM-102",
+    "quantity": 120,
+    "updatedAt": "2026-09-01T10:00:00.000Z"
+  },
+  {
+    "inventoryId": "INV-1795395350736",
+    "warehouseId": "WH-101",
+    "itemId": "ITM-1795393933622",
+    "quantity": 40,
+    "updatedAt": "2026-11-23T00:55:50.736Z"
+  }
+]
