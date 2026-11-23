@@ -90,8 +90,83 @@ async function listWarehouseInventory(req, res, next) {
     next(error);
   }
 }
+// Validates the availability question; returns an error message or null
+function validateAvailabilityQuery(warehouseId, itemId, quantity) {
+  if (typeof warehouseId !== 'string' || warehouseId.trim() === '') {
+    return 'warehouseId is required.';
+  }
+  if (typeof itemId !== 'string' || itemId.trim() === '') {
+    return 'itemId is required.';
+  }
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return 'Quantity must be a whole number of 1 or more.';
+  }
+  return null;
+}
 
+// GET /api/inventory/availability?warehouseId=..&itemId=..&quantity=..
+// -> 200 with { availableQuantity, isAvailable, ... }, or 400 / 404
+async function checkAvailability(req, res, next) {
+  try {
+    const { warehouseId, itemId } = req.query;
+    // Values in the URL are always text, so turn quantity into a number
+    const quantity = Number(req.query.quantity);
+
+    const problem = validateAvailabilityQuery(warehouseId, itemId, quantity);
+    if (problem) {
+      return sendError(res, 400, 'VALIDATION_ERROR', problem);
+    }
+
+    const warehouse = await warehouseService.findWarehouseById(warehouseId);
+    if (!warehouse) {
+      return sendError(res, 404, 'WAREHOUSE_NOT_FOUND', 'Warehouse not found.');
+    }
+    const item = await itemService.findItemById(itemId);
+    if (!item) {
+      return sendError(res, 404, 'ITEM_NOT_FOUND', 'Item not found.');
+    }
+
+    const result = await inventoryService.checkAvailability(warehouseId, itemId, quantity);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+// PATCH /api/inventory/:id with { "change": 10 } or { "change": -10 }
+// -> 200 with the updated record, or 400 / 404 / 409 / 415
+async function updateStock(req, res, next) {
+  try {
+    if (!req.is('application/json')) {
+      return sendError(res, 415, 'UNSUPPORTED_MEDIA_TYPE',
+        'Content-Type must be application/json.');
+    }
+
+    const { change } = req.body;
+    if (!Number.isInteger(change) || change === 0) {
+      return sendError(res, 400, 'VALIDATION_ERROR',
+        'Change must be a whole number that is not 0.');
+    }
+
+    const record = await inventoryService.findRecordById(req.params.id);
+    if (!record) {
+      return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory record not found.');
+    }
+
+    // Business rule: stock can never go below 0
+    if (record.quantity + change < 0) {
+      return sendError(res, 409, 'INSUFFICIENT_STOCK',
+        `Only ${record.quantity} in stock, cannot remove ${-change}.`);
+    }
+
+    const updated = await inventoryService.changeQuantity(req.params.id, change);
+    res.status(200).json(updated);
+  } catch (error) {
+    next(error);
+  }
+}
 module.exports = {
   createInventoryRecord,
-  listWarehouseInventory
+  listWarehouseInventory,
+  checkAvailability,
+  updateStock
 };
