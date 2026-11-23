@@ -2,6 +2,7 @@ require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
 const warehouseRoutes = require('./routes/warehouses');
+const itemRoutes = require('./routes/items');
 const app = express();
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
@@ -15,6 +16,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', environment: process.env.NODE_ENV || 'development' });
 });
 app.use('/api/warehouses', warehouseRoutes);
+app.use('/api/items', itemRoutes);
 app.use((req, res) => {
   res.status(404).json({
     error: { code: 'ROUTE_NOT_FOUND', message: 'Route not found.' }

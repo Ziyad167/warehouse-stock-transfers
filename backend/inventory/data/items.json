@@ -1,0 +1,26 @@
+[
+  {
+    "itemId": "ITM-101",
+    "name": "Steel Shelf Bracket",
+    "sku": "SHF-BRK-01",
+    "category": "Hardware",
+    "description": "Metal bracket for warehouse shelving.",
+    "createdAt": "2026-09-01T09:00:00.000Z"
+  },
+  {
+    "itemId": "ITM-102",
+    "name": "Cardboard Box Large",
+    "sku": "BOX-LRG-01",
+    "category": "Packaging",
+    "description": "Large shipping box, 60 x 40 x 40 cm.",
+    "createdAt": "2026-09-01T09:05:00.000Z"
+  },
+  {
+    "itemId": "ITM-1795393933622",
+    "name": "Packing Tape Roll",
+    "sku": "TAPE-48MM",
+    "category": "Packaging",
+    "description": "",
+    "createdAt": "2026-11-23T00:32:13.623Z"
+  }
+]

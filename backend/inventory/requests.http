@@ -40,3 +40,38 @@ name=Giza Warehouse
 
 ### T06 Unknown route (expect 404 ROUTE_NOT_FOUND)
 GET {{baseUrl}}/api/unknown
+### T10 View all items (expect 200)
+GET {{baseUrl}}/api/items
+
+### T11 Search items (expect 200, only the box)
+GET {{baseUrl}}/api/items?search=box
+
+### T12 Create a valid item (expect 201)
+POST {{baseUrl}}/api/items
+Content-Type: application/json
+
+{
+  "name": "Packing Tape Roll",
+  "sku": "TAPE-48MM",
+  "category": "Packaging"
+}
+
+### T13 Duplicate SKU (expect 409)
+POST {{baseUrl}}/api/items
+Content-Type: application/json
+
+{
+  "name": "Another Box",
+  "sku": "box-lrg-01",
+  "category": "Packaging"
+}
+
+### T14 Invalid SKU (expect 400)
+POST {{baseUrl}}/api/items
+Content-Type: application/json
+
+{
+  "name": "Bad SKU Item",
+  "sku": "A B",
+  "category": "Packaging"
+}
