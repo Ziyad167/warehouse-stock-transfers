@@ -42,5 +42,40 @@ async function createRecord({ warehouseId, itemId, quantity }) {
   await writeInventory(records);
   return record;
 }
+// Checks if one warehouse has enough of one item; returns the result
+async function checkAvailability(warehouseId, itemId, requestedQuantity) {
+  const record = await findRecord(warehouseId, itemId);
+  const availableQuantity = record ? record.quantity : 0;
+  return {
+    warehouseId,
+    itemId,
+    requestedQuantity,
+    availableQuantity,
+    isAvailable: availableQuantity >= requestedQuantity
+  };
+}
+// Finds one inventory record by its id; returns it or undefined
+async function findRecordById(inventoryId) {
+  const records = await readInventory();
+  return records.find((record) => record.inventoryId === inventoryId);
+}
 
-module.exports = { readInventory, findRecord, listByWarehouse, createRecord };
+// Adds the change to the quantity (use a minus number to take stock out),
+// saves the list, and returns the updated record
+async function changeQuantity(inventoryId, change) {
+  const records = await readInventory();
+  const record = records.find((one) => one.inventoryId === inventoryId);
+  record.quantity = record.quantity + change;
+  record.updatedAt = new Date().toISOString();
+  await writeInventory(records);
+  return record;
+}
+module.exports = {
+  readInventory,
+  findRecord,
+  listByWarehouse,
+  createRecord,
+  checkAvailability,
+  findRecordById,
+  changeQuantity
+};

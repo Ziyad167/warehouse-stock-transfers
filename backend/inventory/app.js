@@ -4,6 +4,7 @@ const cors = require('cors');
 const warehouseRoutes = require('./routes/warehouses');
 const itemRoutes = require('./routes/items');
 const inventoryRoutes = require('./routes/inventory');
+const authRoutes = require('./routes/auth');
 const app = express();
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
@@ -16,6 +17,7 @@ app.use(express.json());
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', environment: process.env.NODE_ENV || 'development' });
 });
+app.use('/api/auth', authRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/inventory', inventoryRoutes);

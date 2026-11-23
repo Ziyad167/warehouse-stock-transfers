@@ -1,13 +1,88 @@
 @baseUrl = http://localhost:3001
+@managerToken = {{loginManager.response.body.$.token}}
+@staffToken = {{loginStaff.response.body.$.token}}
+
+### ---------- LOGIN AND ROLES ----------
+### Run A01 and A02 first: the other tests use their tokens.
+
+### A01 Log in as manager (expect 200 with a token)
+# @name loginManager
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "cloud123",
+  "password": "Cloud123456"}
+
+### A02 Log in as staff (expect 200 with a token)
+# @name loginStaff
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "staff12",
+  "password": "Staff12344"
+}
+
+### A03 Wrong password (expect 401 INVALID_LOGIN)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "cloud123",
+  "password": "wrong-password"
+}
+
+### A04 Who am I (expect 200, staff)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{staffToken}}
+
+### A05 No token (expect 401 UNAUTHORIZED)
+GET {{baseUrl}}/api/warehouses
+
+### A06 Staff views stock (expect 200)
+GET {{baseUrl}}/api/warehouses/WH-101/inventory
+Authorization: Bearer {{staffToken}}
+
+### A07 Staff creates a warehouse (expect 403 FORBIDDEN)
+POST {{baseUrl}}/api/warehouses
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "name": "Giza Warehouse",
+  "location": "Giza"
+}
+
+### A08 Staff updates stock (expect 200, staff is allowed)
+PATCH {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "change": 5
+}
+
+### A09 Staff logs out (expect 200)
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{staffToken}}
+
+### A10 Staff token after logout (expect 401). Run A02 again to log in again.
+GET {{baseUrl}}/api/warehouses
+Authorization: Bearer {{staffToken}}
+
+### ---------- WAREHOUSES ----------
 
 ### T00 Health check
 GET {{baseUrl}}/api/health
 
 ### T01 View all warehouses
 GET {{baseUrl}}/api/warehouses
+Authorization: Bearer {{managerToken}}
 
 ### T02 Create a valid warehouse (expect 201)
 POST {{baseUrl}}/api/warehouses
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -17,6 +92,7 @@ Content-Type: application/json
 
 ### T03 Missing name (expect 400 VALIDATION_ERROR)
 POST {{baseUrl}}/api/warehouses
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -25,6 +101,7 @@ Content-Type: application/json
 
 ### T04 Location too short (expect 400 VALIDATION_ERROR)
 POST {{baseUrl}}/api/warehouses
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -34,20 +111,28 @@ Content-Type: application/json
 
 ### T05 Wrong content type (expect 415 UNSUPPORTED_MEDIA_TYPE)
 POST {{baseUrl}}/api/warehouses
+Authorization: Bearer {{managerToken}}
 Content-Type: text/plain
 
 name=Giza Warehouse
 
 ### T06 Unknown route (expect 404 ROUTE_NOT_FOUND)
 GET {{baseUrl}}/api/unknown
+Authorization: Bearer {{managerToken}}
+
+### ---------- ITEMS ----------
+
 ### T10 View all items (expect 200)
 GET {{baseUrl}}/api/items
+Authorization: Bearer {{managerToken}}
 
 ### T11 Search items (expect 200, only the box)
 GET {{baseUrl}}/api/items?search=box
+Authorization: Bearer {{managerToken}}
 
 ### T12 Create a valid item (expect 201)
 POST {{baseUrl}}/api/items
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -58,6 +143,7 @@ Content-Type: application/json
 
 ### T13 Duplicate SKU (expect 409)
 POST {{baseUrl}}/api/items
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -68,6 +154,7 @@ Content-Type: application/json
 
 ### T14 Invalid SKU (expect 400)
 POST {{baseUrl}}/api/items
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -75,16 +162,20 @@ Content-Type: application/json
   "sku": "A B",
   "category": "Packaging"
 }
+
 ### ---------- INVENTORY ----------
 
 ### T20 Stock of Cairo warehouse (expect 200)
 GET {{baseUrl}}/api/warehouses/WH-101/inventory
+Authorization: Bearer {{managerToken}}
 
 ### T21 Unknown warehouse (expect 404 WAREHOUSE_NOT_FOUND)
 GET {{baseUrl}}/api/warehouses/WH-999/inventory
+Authorization: Bearer {{managerToken}}
 
 ### T22 Add tape to Cairo warehouse (expect 201)
 POST {{baseUrl}}/api/inventory
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -95,6 +186,7 @@ Content-Type: application/json
 
 ### T23 Same item again in same warehouse (expect 409 DUPLICATE_RECORD)
 POST {{baseUrl}}/api/inventory
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -105,6 +197,7 @@ Content-Type: application/json
 
 ### T24 Negative quantity (expect 400 VALIDATION_ERROR)
 POST {{baseUrl}}/api/inventory
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
@@ -115,10 +208,97 @@ Content-Type: application/json
 
 ### T25 Unknown item (expect 404 ITEM_NOT_FOUND)
 POST {{baseUrl}}/api/inventory
+Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
   "warehouseId": "WH-101",
   "itemId": "ITM-999",
   "quantity": 5
+}
+
+### ---------- AVAILABILITY ----------
+
+### T30 Enough stock (expect 200, isAvailable true)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-101&itemId=ITM-101&quantity=30
+Authorization: Bearer {{managerToken}}
+
+### T31 Not enough stock (expect 200, isAvailable false)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-101&itemId=ITM-101&quantity=80
+Authorization: Bearer {{managerToken}}
+
+### T32 Item not stocked in this warehouse (expect 200, available 0)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-1795391950080&itemId=ITM-101&quantity=1
+Authorization: Bearer {{managerToken}}
+
+### T33 Missing quantity (expect 400 VALIDATION_ERROR)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-101&itemId=ITM-101
+Authorization: Bearer {{managerToken}}
+
+### T34 Quantity 0 (expect 400 VALIDATION_ERROR)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-101&itemId=ITM-101&quantity=0
+Authorization: Bearer {{managerToken}}
+
+### T35 Unknown warehouse (expect 404 WAREHOUSE_NOT_FOUND)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-999&itemId=ITM-101&quantity=5
+Authorization: Bearer {{managerToken}}
+
+### T36 Unknown item (expect 404 ITEM_NOT_FOUND)
+GET {{baseUrl}}/api/inventory/availability?warehouseId=WH-101&itemId=ITM-999&quantity=5
+Authorization: Bearer {{managerToken}}
+
+### ---------- STOCK UPDATES ----------
+
+### T40 Receive 10 units (expect 200, quantity goes up by 10)
+PATCH {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": 10
+}
+
+### T41 Dispatch 20 units (expect 200, quantity goes down by 20)
+PATCH {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": -20
+}
+
+### T42 Remove more than in stock (expect 409 INSUFFICIENT_STOCK)
+PATCH {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": -500
+}
+
+### T43 Change of 0 (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": 0
+}
+
+### T44 Change as text (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": "5"
+}
+
+### T45 Unknown record (expect 404 INVENTORY_NOT_FOUND)
+PATCH {{baseUrl}}/api/inventory/INV-999
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": 5
 }
