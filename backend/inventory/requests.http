@@ -1,0 +1,42 @@
+@baseUrl = http://localhost:3001
+
+### T00 Health check
+GET {{baseUrl}}/api/health
+
+### T01 View all warehouses
+GET {{baseUrl}}/api/warehouses
+
+### T02 Create a valid warehouse (expect 201)
+POST {{baseUrl}}/api/warehouses
+Content-Type: application/json
+
+{
+  "name": "Alexandria Warehouse",
+  "location": "Alexandria"
+}
+
+### T03 Missing name (expect 400 VALIDATION_ERROR)
+POST {{baseUrl}}/api/warehouses
+Content-Type: application/json
+
+{
+  "location": "Giza"
+}
+
+### T04 Location too short (expect 400 VALIDATION_ERROR)
+POST {{baseUrl}}/api/warehouses
+Content-Type: application/json
+
+{
+  "name": "Giza Warehouse",
+  "location": "G"
+}
+
+### T05 Wrong content type (expect 415 UNSUPPORTED_MEDIA_TYPE)
+POST {{baseUrl}}/api/warehouses
+Content-Type: text/plain
+
+name=Giza Warehouse
+
+### T06 Unknown route (expect 404 ROUTE_NOT_FOUND)
+GET {{baseUrl}}/api/unknown

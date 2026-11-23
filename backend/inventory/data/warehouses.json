@@ -1,0 +1,14 @@
+[
+  {
+    "warehouseId": "WH-101",
+    "name": "Cairo Main Warehouse",
+    "location": "Cairo",
+    "createdAt": "2026-09-01T09:00:00.000Z"
+  },
+  {
+    "warehouseId": "WH-1795391950080",
+    "name": "Alexandria Warehouse",
+    "location": "Alexandria",
+    "createdAt": "2026-11-22T23:59:10.080Z"
+  }
+]
