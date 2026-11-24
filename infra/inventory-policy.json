@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InventoryTablesOnly",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Scan"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:000000000000:table/InventoryWarehouses",
+        "arn:aws:dynamodb:us-east-1:000000000000:table/InventoryItems",
+        "arn:aws:dynamodb:us-east-1:000000000000:table/InventoryStock",
+        "arn:aws:dynamodb:us-east-1:000000000000:table/InventoryUsers",
+        "arn:aws:dynamodb:us-east-1:000000000000:table/InventorySessions"
+      ]
+    },
+    {
+      "Sid": "FrontendBucketOnly",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::inventory-frontend",
+        "arn:aws:s3:::inventory-frontend/*"
+      ]
+    }
+  ]
+}

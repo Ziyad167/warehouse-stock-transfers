@@ -1,22 +1,22 @@
-const fs = require('fs/promises');
-const path = require('path');
+const { ScanCommand, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const ddb = require('../db');
 
-const DATA_FILE = path.join(__dirname, '..', 'data', 'items.json');
+const TABLE = 'InventoryItems';
 
+// Returns all items, oldest first
 async function readItems() {
-  const text = await fs.readFile(DATA_FILE, 'utf8');
-  return JSON.parse(text);
+  const result = await ddb.send(new ScanCommand({ TableName: TABLE }));
+  return result.Items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-async function writeItems(items) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(items, null, 2) + '\n');
-}
+// Finds an item by its SKU (not case sensitive); returns it or undefined
 async function findItemBySku(sku) {
   const items = await readItems();
   const wanted = sku.trim().toUpperCase();
   return items.find((item) => item.sku === wanted);
 }
 
+// Returns the items whose name, SKU or category contains the search text
 async function searchItems(searchText) {
   const items = await readItems();
   const text = (searchText || '').trim().toLowerCase();
@@ -29,8 +29,9 @@ async function searchItems(searchText) {
     item.category.toLowerCase().includes(text)
   );
 }
+
+// Saves a new item and returns it
 async function createItem({ name, sku, category, description }) {
-  const items = await readItems();
   const item = {
     itemId: `ITM-${Date.now()}`,
     name: name.trim(),
@@ -39,15 +40,14 @@ async function createItem({ name, sku, category, description }) {
     description: (description || '').trim(),
     createdAt: new Date().toISOString()
   };
-  items.push(item);
-  await writeItems(items);
+  await ddb.send(new PutCommand({ TableName: TABLE, Item: item }));
   return item;
 }
 
-// Finds one item by its id; returns the item or undefined
+// Finds one item by its id (the table key); returns it or undefined
 async function findItemById(itemId) {
-  const items = await readItems();
-  return items.find((item) => item.itemId === itemId);
+  const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { itemId } }));
+  return result.Item;
 }
 
 module.exports = { readItems, findItemBySku, searchItems, createItem, findItemById };

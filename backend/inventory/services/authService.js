@@ -1,28 +1,10 @@
-const fs = require('fs/promises');
-const path = require('path');
 const crypto = require('crypto');
+const { PutCommand, GetCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const ddb = require('../db');
 
-const USERS_FILE = path.join(__dirname, '..', 'data', 'users.json');
-const SESSIONS_FILE = path.join(__dirname, '..', 'data', 'sessions.json');
+const USERS_TABLE = 'InventoryUsers';
+const SESSIONS_TABLE = 'InventorySessions';
 const KEY_LENGTH = 64;
-
-async function readUsers() {
-  const text = await fs.readFile(USERS_FILE, 'utf8');
-  return JSON.parse(text);
-}
-
-async function writeUsers(users) {
-  await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2) + '\n');
-}
-
-async function readSessions() {
-  const text = await fs.readFile(SESSIONS_FILE, 'utf8');
-  return JSON.parse(text);
-}
-
-async function writeSessions(sessions) {
-  await fs.writeFile(SESSIONS_FILE, JSON.stringify(sessions, null, 2) + '\n');
-}
 
 // Turns a password into a hash with a random salt (Lab 8: crypto.scrypt)
 function hashPassword(password) {
@@ -47,23 +29,25 @@ function verifyPassword(password, salt, savedHash) {
   });
 }
 
+// Finds a user by username (the table key); returns it or undefined
 async function findUserByUsername(username) {
-  const users = await readUsers();
-  return users.find((user) => user.username === username);
+  const result = await ddb.send(new GetCommand({ TableName: USERS_TABLE, Key: { username } }));
+  return result.Item;
 }
 
 // Saves a new user; the password itself is never stored, only its hash
 async function createUser({ username, password, role }) {
-  const users = await readUsers();
   const { salt, hash } = await hashPassword(password);
-  users.push({
-    username,
-    role,
-    passwordSalt: salt,
-    passwordHash: hash,
-    createdAt: new Date().toISOString()
-  });
-  await writeUsers(users);
+  await ddb.send(new PutCommand({
+    TableName: USERS_TABLE,
+    Item: {
+      username,
+      role,
+      passwordSalt: salt,
+      passwordHash: hash,
+      createdAt: new Date().toISOString()
+    }
+  }));
 }
 
 // Checks the username and password; returns { username, role } or null
@@ -81,21 +65,21 @@ async function checkLogin(username, password) {
 
 // Creates a session with a random token and returns the token
 async function createSession(username) {
-  const sessions = await readSessions();
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.push({ token, username, createdAt: new Date().toISOString() });
-  await writeSessions(sessions);
+  await ddb.send(new PutCommand({
+    TableName: SESSIONS_TABLE,
+    Item: { token, username, createdAt: new Date().toISOString() }
+  }));
   return token;
 }
 
 // Finds who owns a token; returns { username, role } or null
 async function findUserByToken(token) {
-  const sessions = await readSessions();
-  const session = sessions.find((one) => one.token === token);
-  if (!session) {
+  const result = await ddb.send(new GetCommand({ TableName: SESSIONS_TABLE, Key: { token } }));
+  if (!result.Item) {
     return null;
   }
-  const user = await findUserByUsername(session.username);
+  const user = await findUserByUsername(result.Item.username);
   if (!user) {
     return null;
   }
@@ -104,9 +88,7 @@ async function findUserByToken(token) {
 
 // Removes a session (logout)
 async function deleteSession(token) {
-  const sessions = await readSessions();
-  const remaining = sessions.filter((one) => one.token !== token);
-  await writeSessions(remaining);
+  await ddb.send(new DeleteCommand({ TableName: SESSIONS_TABLE, Key: { token } }));
 }
 
 module.exports = {

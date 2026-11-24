@@ -302,3 +302,31 @@ Content-Type: application/json
 {
   "change": 5
 }
+### ---------- LOW STOCK ALERT (SNS) ----------
+
+### T46 Dispatch tape down to 5 (expect 200, "lowStockAlert": true)
+PATCH {{baseUrl}}/api/inventory/INV-1795395350736
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": -35
+}
+
+### T47 Put the tape back up to 40 (expect 200, "lowStockAlert": false)
+PATCH {{baseUrl}}/api/inventory/INV-1795395350736
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": 35
+}
+### ---------- WHERE IS AN ITEM ----------
+
+### T48 Where is the steel bracket stored (expect 200, list of warehouses and total)
+GET {{baseUrl}}/api/items/ITM-101/stock
+Authorization: Bearer {{managerToken}}
+
+### T49 Unknown item (expect 404 ITEM_NOT_FOUND)
+GET {{baseUrl}}/api/items/ITM-999/stock
+Authorization: Bearer {{managerToken}}

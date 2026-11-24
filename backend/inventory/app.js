@@ -10,8 +10,9 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
   next();
 });
+// 8080 = frontend on http-server, 4566 = frontend served from the S3 bucket on Floci
 app.use(cors({
-  origin: 'http://localhost:8080'
+  origin: ['http://localhost:8080', 'http://localhost:4566']
 }));
 app.use(express.json());
 app.get('/api/health', (req, res) => {
