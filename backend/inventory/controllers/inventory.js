@@ -1,6 +1,7 @@
 const inventoryService = require('../services/inventoryService');
 const warehouseService = require('../services/warehouseService');
 const itemService = require('../services/itemService');
+const alertService = require('../services/alertService');
 
 // Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
@@ -158,8 +159,39 @@ async function updateStock(req, res, next) {
         `Only ${record.quantity} in stock, cannot remove ${-change}.`);
     }
 
-    const updated = await inventoryService.changeQuantity(req.params.id, change);
-    res.status(200).json(updated);
+     const updated = await inventoryService.changeQuantity(req.params.id, change);
+
+    // Warn managers through SNS if the stock is now below the limit
+    const lowStockAlert = await alertService.sendLowStockAlert(updated);
+    res.status(200).json({ ...updated, lowStockAlert });
+  } catch (error) {
+    next(error);
+  }
+}
+// GET /api/items/:id/stock -> 200 with the warehouses that hold this item, or 404
+async function listItemStock(req, res, next) {
+  try {
+    const item = await itemService.findItemById(req.params.id);
+    if (!item) {
+      return sendError(res, 404, 'ITEM_NOT_FOUND', 'Item not found.');
+    }
+
+    const records = await inventoryService.listByItem(item.itemId);
+    const stock = [];
+    let totalQuantity = 0;
+    for (const record of records) {
+      const warehouse = await warehouseService.findWarehouseById(record.warehouseId);
+      stock.push({
+        inventoryId: record.inventoryId,
+        warehouseId: record.warehouseId,
+        warehouseName: warehouse ? warehouse.name : 'Unknown warehouse',
+        location: warehouse ? warehouse.location : '',
+        quantity: record.quantity
+      });
+      totalQuantity = totalQuantity + record.quantity;
+    }
+
+    res.status(200).json({ item, totalQuantity, stock });
   } catch (error) {
     next(error);
   }
@@ -168,5 +200,6 @@ module.exports = {
   createInventoryRecord,
   listWarehouseInventory,
   checkAvailability,
-  updateStock
+  updateStock,
+  listItemStock
 };

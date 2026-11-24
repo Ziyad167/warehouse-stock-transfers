@@ -13,6 +13,15 @@ async function listByWarehouse(warehouseId) {
   }));
   return result.Items;
 }
+// Returns all the inventory records of one item, in every warehouse
+async function listByItem(itemId) {
+  const result = await ddb.send(new ScanCommand({
+    TableName: TABLE,
+    FilterExpression: 'itemId = :i',
+    ExpressionAttributeValues: { ':i': itemId }
+  }));
+  return result.Items;
+}
 
 // Finds the record of one item in one warehouse; returns it or undefined
 async function findRecord(warehouseId, itemId) {
@@ -68,6 +77,7 @@ async function changeQuantity(inventoryId, change) {
 module.exports = {
   findRecord,
   listByWarehouse,
+  listByItem,
   createRecord,
   checkAvailability,
   findRecordById,
