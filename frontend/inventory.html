@@ -11,9 +11,24 @@
     <h1>Inventory Management</h1>
     <p>View, check and update the stock of each warehouse.</p>
     <p id="api-status" class="api-status">Checking API...</p>
+    <div id="user-bar" class="user-bar" hidden>
+        <span id="user-info"></span>
+        <button id="logout-button" type="button">Log Out</button>
+    </div>
 </header>
 
-<main class="container">
+<section id="login-panel" class="panel login-panel" hidden>
+    <h2>Log In</h2>
+    <form id="login-form">
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" required>
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" required>
+        <button type="submit">Log In</button>
+    </form>
+</section>
+
+<main id="app" class="container" hidden>
     <section class="panel">
         <h2>Warehouse Stock</h2>
         <label for="warehouse-select">Warehouse</label>
@@ -22,14 +37,16 @@
     </section>
 
     <section class="panel">
-        <h2>Add Item to This Warehouse</h2>
-        <form id="add-form">
-            <label for="add-item">Item</label>
-            <select id="add-item" required></select>
-            <label for="add-quantity">Starting quantity</label>
-            <input id="add-quantity" type="number" min="0" required>
-            <button type="submit">Add to Warehouse</button>
-        </form>
+        <div id="add-section">
+            <h2>Add Item to This Warehouse</h2>
+            <form id="add-form">
+                <label for="add-item">Item</label>
+                <select id="add-item" required></select>
+                <label for="add-quantity">Starting quantity</label>
+                <input id="add-quantity" type="number" min="0" required>
+                <button type="submit">Add to Warehouse</button>
+            </form>
+        </div>
 
         <h2>Check Availability</h2>
         <form id="check-form">
