@@ -1,36 +1,27 @@
-const fs = require('fs/promises');
-const path = require('path');
+const { ScanCommand, PutCommand, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const ddb = require('../db');
 
-const DATA_FILE = path.join(__dirname, '..', 'data', 'inventory.json');
+const TABLE = 'InventoryStock';
 
-// Reads the whole file and returns the array of inventory records
-async function readInventory() {
-  const text = await fs.readFile(DATA_FILE, 'utf8');
-  return JSON.parse(text);
-}
-
-// Saves the whole array of inventory records back to the file
-async function writeInventory(records) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(records, null, 2) + '\n');
+// Returns all the inventory records of one warehouse.
+// The FilterExpression asks DynamoDB to return only that warehouse's records.
+async function listByWarehouse(warehouseId) {
+  const result = await ddb.send(new ScanCommand({
+    TableName: TABLE,
+    FilterExpression: 'warehouseId = :w',
+    ExpressionAttributeValues: { ':w': warehouseId }
+  }));
+  return result.Items;
 }
 
 // Finds the record of one item in one warehouse; returns it or undefined
 async function findRecord(warehouseId, itemId) {
-  const records = await readInventory();
-  return records.find((record) =>
-    record.warehouseId === warehouseId && record.itemId === itemId
-  );
+  const records = await listByWarehouse(warehouseId);
+  return records.find((record) => record.itemId === itemId);
 }
 
-// Returns all the inventory records of one warehouse
-async function listByWarehouse(warehouseId) {
-  const records = await readInventory();
-  return records.filter((record) => record.warehouseId === warehouseId);
-}
-
-// Builds a new record, adds it to the list, saves the list, returns the new record
+// Saves a new record and returns it
 async function createRecord({ warehouseId, itemId, quantity }) {
-  const records = await readInventory();
   const record = {
     inventoryId: `INV-${Date.now()}`,
     warehouseId,
@@ -38,10 +29,10 @@ async function createRecord({ warehouseId, itemId, quantity }) {
     quantity,
     updatedAt: new Date().toISOString()
   };
-  records.push(record);
-  await writeInventory(records);
+  await ddb.send(new PutCommand({ TableName: TABLE, Item: record }));
   return record;
 }
+
 // Checks if one warehouse has enough of one item; returns the result
 async function checkAvailability(warehouseId, itemId, requestedQuantity) {
   const record = await findRecord(warehouseId, itemId);
@@ -54,24 +45,27 @@ async function checkAvailability(warehouseId, itemId, requestedQuantity) {
     isAvailable: availableQuantity >= requestedQuantity
   };
 }
-// Finds one inventory record by its id; returns it or undefined
+
+// Finds one inventory record by its id (the table key); returns it or undefined
 async function findRecordById(inventoryId) {
-  const records = await readInventory();
-  return records.find((record) => record.inventoryId === inventoryId);
+  const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { inventoryId } }));
+  return result.Item;
 }
 
-// Adds the change to the quantity (use a minus number to take stock out),
-// saves the list, and returns the updated record
+// Adds the change to the quantity (use a minus number to take stock out)
+// and returns the updated record
 async function changeQuantity(inventoryId, change) {
-  const records = await readInventory();
-  const record = records.find((one) => one.inventoryId === inventoryId);
-  record.quantity = record.quantity + change;
-  record.updatedAt = new Date().toISOString();
-  await writeInventory(records);
-  return record;
+  const result = await ddb.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { inventoryId },
+    UpdateExpression: 'SET quantity = quantity + :change, updatedAt = :now',
+    ExpressionAttributeValues: { ':change': change, ':now': new Date().toISOString() },
+    ReturnValues: 'ALL_NEW'
+  }));
+  return result.Attributes;
 }
+
 module.exports = {
-  readInventory,
   findRecord,
   listByWarehouse,
   createRecord,

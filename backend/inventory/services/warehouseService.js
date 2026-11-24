@@ -1,37 +1,30 @@
-const fs = require('fs/promises');
-const path = require('path');
+const { ScanCommand, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const ddb = require('../db');
 
-const DATA_FILE = path.join(__dirname, '..', 'data', 'warehouses.json');
+const TABLE = 'InventoryWarehouses';
 
-
+// Returns all warehouses, oldest first
 async function readWarehouses() {
-  const text = await fs.readFile(DATA_FILE, 'utf8');
-  return JSON.parse(text);
+  const result = await ddb.send(new ScanCommand({ TableName: TABLE }));
+  return result.Items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-
-async function writeWarehouses(warehouses) {
-  await fs.writeFile(DATA_FILE, JSON.stringify(warehouses, null, 2) + '\n');
-}
-
-
+// Saves a new warehouse and returns it
 async function createWarehouse({ name, location }) {
-  const warehouses = await readWarehouses();
   const warehouse = {
     warehouseId: `WH-${Date.now()}`,
     name: name.trim(),
     location: location.trim(),
     createdAt: new Date().toISOString()
   };
-  warehouses.push(warehouse);
-  await writeWarehouses(warehouses);
+  await ddb.send(new PutCommand({ TableName: TABLE, Item: warehouse }));
   return warehouse;
 }
 
-// Finds one warehouse by its id; returns the warehouse or undefined
+// Finds one warehouse by its id (the table key); returns it or undefined
 async function findWarehouseById(warehouseId) {
-  const warehouses = await readWarehouses();
-  return warehouses.find((warehouse) => warehouse.warehouseId === warehouseId);
+  const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { warehouseId } }));
+  return result.Item;
 }
 
 module.exports = { readWarehouses, createWarehouse, findWarehouseById };
