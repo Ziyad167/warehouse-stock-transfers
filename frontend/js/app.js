@@ -14,15 +14,38 @@ const checkResult = document.querySelector('#check-result');
 const searchForm = document.querySelector('#search-form');
 const searchText = document.querySelector('#search-text');
 const itemsList = document.querySelector('#items-list');
+const loginPanel = document.querySelector('#login-panel');
+const loginForm = document.querySelector('#login-form');
+const loginUsername = document.querySelector('#login-username');
+const loginPassword = document.querySelector('#login-password');
+const appSection = document.querySelector('#app');
+const userBar = document.querySelector('#user-bar');
+const userInfo = document.querySelector('#user-info');
+const logoutButton = document.querySelector('#logout-button');
+const addSection = document.querySelector('#add-section');
 
-// Send a request, read the JSON answer, and throw if the status is not 2xx
+// Lab 8: the login token is kept in localStorage, so a page refresh stays logged in
+let authToken = localStorage.getItem('authToken');
+
+// Send a request, read the JSON answer, and throw if the status is not 2xx.
+// If we are logged in, the token is added to every request.
 async function apiRequest(url, options = {}) {
-  const response = await fetch(url, options);
+  const headers = { ...(options.headers || {}) };
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+  const response = await fetch(url, { ...options, headers });
 
   let body = null;
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     body = await response.json();
+  }
+
+  // 401 while logged in means the token is not valid any more: log in again
+  if (response.status === 401 && authToken) {
+    clearLogin();
+    showLogin('Your session ended. Please log in again.');
   }
 
   if (!response.ok) {
@@ -231,7 +254,86 @@ async function checkApi() {
   }
 }
 
-checkApi();
-loadItems();
-loadWarehouses();
-searchItems('');
+// ---------- Login and logout ----------
+
+// Forgets the token in this browser
+function clearLogin() {
+  authToken = null;
+  localStorage.removeItem('authToken');
+}
+
+// Shows the login form and hides the app
+function showLogin(text) {
+  appSection.hidden = true;
+  userBar.hidden = true;
+  loginPanel.hidden = false;
+  message.textContent = text || '';
+}
+
+// Shows the app for a logged-in user; only managers see the "Add Item" form
+async function showApp(user) {
+  loginPanel.hidden = true;
+  appSection.hidden = false;
+  userBar.hidden = false;
+  userInfo.textContent = `Logged in as ${user.username} (${user.role})`;
+  addSection.hidden = user.role !== 'manager';
+  message.textContent = '';
+
+  await loadItems();
+  await loadWarehouses();
+  await searchItems('');
+}
+
+// POST /api/auth/login -> save the token, then show the app
+loginForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  try {
+    const user = await apiRequest(`${INVENTORY_API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: loginUsername.value.trim(),
+        password: loginPassword.value
+      })
+    });
+    authToken = user.token;
+    localStorage.setItem('authToken', authToken);
+    loginForm.reset();
+    await showApp(user);
+  } catch (error) {
+    console.error(error);
+    message.textContent = `Could not log in: ${error.message}`;
+  }
+});
+
+// POST /api/auth/logout -> the token stops working on the server too
+logoutButton.addEventListener('click', async () => {
+  try {
+    await apiRequest(`${INVENTORY_API}/api/auth/logout`, { method: 'POST' });
+  } catch (error) {
+    console.error(error);
+  }
+  clearLogin();
+  showLogin('You are logged out.');
+});
+
+// When the page opens: if a token is saved, ask the server who we are
+async function startPage() {
+  await checkApi();
+
+  if (!authToken) {
+    showLogin();
+    return;
+  }
+  try {
+    const user = await apiRequest(`${INVENTORY_API}/api/auth/me`);
+    await showApp(user);
+  } catch (error) {
+    console.error(error);
+    clearLogin();
+    showLogin();
+  }
+}
+
+startPage();

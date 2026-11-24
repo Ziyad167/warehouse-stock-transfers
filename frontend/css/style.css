@@ -78,3 +78,25 @@ input, select, button {
         grid-template-columns: 1fr;
     }
 }
+
+/* Login and logged-in user */
+[hidden] {
+    display: none !important;
+}
+
+.login-panel {
+    width: min(420px, 92%);
+    margin: 2rem auto;
+}
+
+.user-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+
+.user-bar button {
+    width: auto;
+    padding: 0.4rem 1rem;
+}
