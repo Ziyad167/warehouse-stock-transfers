@@ -13,6 +13,13 @@ export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=us-east-1
 ENDPOINT=http://localhost:4566
 
+# Stop here if Floci is not running (otherwise every command below fails)
+if ! aws --endpoint-url "$ENDPOINT" dynamodb list-tables > /dev/null 2>&1; then
+  echo "ERROR: Floci is not answering on $ENDPOINT, so nothing was created."
+  echo "Open Docker Desktop, then run:  docker compose -f infra/floci/docker-compose.yml up -d"
+  exit 1
+fi
+
 # Runs an AWS CLI command against Floci
 awsl() {
   MSYS_NO_PATHCONV=1 aws --endpoint-url "$ENDPOINT" "$@"
@@ -49,6 +56,8 @@ awsl s3 mb s3://inventory-frontend > /dev/null 2>&1 \
 aws --endpoint-url "$ENDPOINT" s3 cp frontend/inventory.html s3://inventory-frontend/inventory.html --content-type text/html
 aws --endpoint-url "$ENDPOINT" s3 cp frontend/css/style.css s3://inventory-frontend/css/style.css --content-type text/css
 aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/config.js s3://inventory-frontend/js/config.js --content-type application/javascript
+aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers-config.js s3://inventory-frontend/js/transfers-config.js --content-type application/javascript
+aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/common.js s3://inventory-frontend/js/common.js --content-type application/javascript
 aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/app.js s3://inventory-frontend/js/app.js --content-type application/javascript
 
 echo "=== 4) SNS topic for low-stock alerts (+ SQS queue that keeps them) ==="
