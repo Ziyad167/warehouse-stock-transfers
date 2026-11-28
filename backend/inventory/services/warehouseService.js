@@ -9,6 +9,13 @@ async function readWarehouses() {
   return result.Items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+// Finds a warehouse by its name (not case sensitive); returns it or undefined
+async function findWarehouseByName(name) {
+  const warehouses = await readWarehouses();
+  const wanted = name.trim().toLowerCase();
+  return warehouses.find((warehouse) => warehouse.name.toLowerCase() === wanted);
+}
+
 // Saves a new warehouse and returns it
 async function createWarehouse({ name, location }) {
   const warehouse = {
@@ -27,4 +34,18 @@ async function findWarehouseById(warehouseId) {
   return result.Item;
 }
 
-module.exports = { readWarehouses, createWarehouse, findWarehouseById };
+// Saves the new name and location of a warehouse and returns it
+async function updateWarehouse(warehouse, changes) {
+  const updated = {
+    ...warehouse,
+    name: changes.name !== undefined ? changes.name.trim() : warehouse.name,
+    location: changes.location !== undefined ? changes.location.trim() : warehouse.location,
+    updatedAt: new Date().toISOString()
+  };
+  await ddb.send(new PutCommand({ TableName: TABLE, Item: updated }));
+  return updated;
+}
+
+module.exports = {
+  readWarehouses, findWarehouseByName, createWarehouse, findWarehouseById, updateWarehouse
+};
